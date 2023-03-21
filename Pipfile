@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 streamlit = "*"
 pandas = "*"
+plotly-express = "==0.4.1"
 
 [dev-packages]
 

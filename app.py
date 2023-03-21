@@ -1,44 +1,55 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-# App title
-st.title("Mortality Review Meeting Action Log")
+# Create a function to save the data to a CSV file
+def save_data_to_csv(data):
+    data.to_csv("patient_mdt_data.csv", index=False)
 
-# Input patient information
-st.subheader("Patient Information")
-patient_id = st.text_input("Patient ID")
-patient_name = st.text_input("Patient Name")
-age = st.number_input("Age", min_value=0, max_value=120, step=1)
-gender = st.selectbox("Gender", options=["Male", "Female", "Other"])
+# Load existing data or create a new DataFrame
+try:
+    patient_mdt_data = pd.read_csv("patient_mdt_data.csv")
+except FileNotFoundError:
+    patient_mdt_data = pd.DataFrame(columns=["Patient ID", "Name", "DOB", "Action", "Timestamp"])
 
-# Input mortality information
-st.subheader("Mortality Information")
-cause_of_death = st.text_input("Cause of Death")
-contributing_factors = st.text_area("Contributing Factors", height=100)
+st.set_page_config(page_title="Patient Mortality MDT Tracker", layout="wide")
+st.title("Patient Mortality MDT Tracker")
 
-# Input actions for improvement
-st.subheader("Actions for Improvement")
-action = st.text_input("Action")
-responsible_person = st.text_input("Responsible Person")
-due_date = st.date_input("Due Date")
+# Create a multi-page app
+page = st.sidebar.selectbox("Choose a page", ["Action Log", "Enter Patient Details"])
+    
+if page == "Action Log":
+    st.header("Action Log")
+    st.write(patient_mdt_data)
 
-# Save the input data
-if st.button("Save"):
-    data = {
-        "Patient ID": patient_id,
-        "Patient Name": patient_name,
-        "Age": age,
-        "Gender": gender,
-        "Cause of Death": cause_of_death,
-        "Contributing Factors": contributing_factors,
-        "Action": action,
-        "Responsible Person": responsible_person,
-        "Due Date": due_date,
-    }
-    df = pd.DataFrame(data, index=[0])
+    # Create a bar chart showing the number of actions per patient
+    actions_by_patient = patient_mdt_data["Patient ID"].value_counts().reset_index()
+    actions_by_patient.columns = ["Patient ID", "Count"]
+    fig1 = px.bar(actions_by_patient, x="Patient ID", y="Count", title="Number of Actions by Patient")
+    st.plotly_chart(fig1)
 
-    # Display the saved data
-    st.write("Saved Data:")
-    st.write(df)
+    # Create a line chart showing the number of actions per date
+    actions_by_date = patient_mdt_data["Timestamp"].value_counts().reset_index()
+    actions_by_date.columns = ["Timestamp", "Count"]
+    actions_by_date["Timestamp"] = pd.to_datetime(actions_by_date["Timestamp"])
+    actions_by_date = actions_by_date.sort_values("Timestamp")
+    fig2 = px.line(actions_by_date, x="Timestamp", y="Count", title="Number of Actions by Date")
+    st.plotly_chart(fig2)
 
-# Run the app with the following command: streamlit run app.py
+elif page == "Enter Patient Details":
+    st.header("Enter Patient Details")
+    with st.form("patient_form"):
+        patient_id = st.text_input("Patient ID")
+        patient_name = st.text_input("Name")
+        patient_dob = st.date_input("Date of Birth")
+        patient_action = st.text_input("Action")
+        patient_timestamp = st.date_input("Timestamp")
+
+        submit_button = st.form_submit_button("Submit")
+        
+        if submit_button and patient_id and patient_name and patient_dob and patient_action and patient_timestamp:
+            new_data = {"Patient ID": patient_id, "Name": patient_name, "DOB": patient_dob,
+                        "Action": patient_action, "Timestamp": patient_timestamp}
+            patient_mdt_data = patient_mdt_data.append(new_data, ignore_index=True)
+            save_data_to_csv(patient_mdt_data)
+            st.success("Data successfully saved.")
